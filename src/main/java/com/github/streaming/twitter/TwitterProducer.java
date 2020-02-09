@@ -17,6 +17,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
@@ -26,13 +28,22 @@ import java.util.concurrent.TimeUnit;
 public class TwitterProducer {
 
     Logger logger = LoggerFactory.getLogger(TwitterProducer.class.getName());
-    String consumerKey="zxUqDonY95a0yPSrQKbqlNXqn";
-    String consumerSecret="1f0m7iA5faoCRlqu8vegTr4gITxNWSHPA7o2zQzVlXgJX3vbSo";
-    String token="1112730309907415042-zbhVDlcPwOblRF7f1mHwVScDH2YwbD";
-    String secret="lWYSiALbyaIrFZPxRUhkGqFWKxKDZsAHaCSybYawi5Hq6";
-
+    Properties properties = new Properties();
+    String fileName="./src/main/resources/twitter.config.properties";
 
     public TwitterProducer() {
+        loadTwitterProperties();
+    }
+
+    public void loadTwitterProperties(){
+        InputStream is = null;
+        try{
+            is = new FileInputStream(fileName);
+            properties.load(is);
+        }
+        catch(Exception e){
+            logger.error("File not found",e);
+        }
     }
 
     public static void main(String[] args) {
@@ -100,7 +111,9 @@ public class TwitterProducer {
         hosebirdEndpoint.trackTerms(terms);
 
         // These secrets should be read from a config file
-        Authentication hosebirdAuth = new OAuth1(consumerKey, consumerSecret, token, secret);
+        Authentication hosebirdAuth = new OAuth1(properties.getProperty("consumerKey"),
+                properties.getProperty("consumerSecret"),properties.getProperty("token"),
+                properties.getProperty("secret"));
 
 
         ClientBuilder builder = new ClientBuilder()
