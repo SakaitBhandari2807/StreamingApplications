@@ -1,5 +1,2 @@
-target
 src/main/resources/**
-.idea
-kafka-starter-learning-project.iml
 kafka-consumer-elasticsearch.iml
