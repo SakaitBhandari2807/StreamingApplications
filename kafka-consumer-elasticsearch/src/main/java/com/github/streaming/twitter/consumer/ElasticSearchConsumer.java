@@ -5,10 +5,12 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
@@ -38,14 +40,18 @@ public class ElasticSearchConsumer {
 
   public static RestHighLevelClient createClient(){
       //String hostname="";
-
-      RestHighLevelClient client = new RestHighLevelClient(
-              RestClient.builder(new HttpHost(properties.getProperty("hostname"),443,"https")));
-
       CredentialsProvider credentialsProvider =  new BasicCredentialsProvider();
       credentialsProvider.setCredentials(AuthScope.ANY,
               new UsernamePasswordCredentials(properties.getProperty("username"),properties.getProperty("password"))
       );
+      RestHighLevelClient client = new RestHighLevelClient(
+              RestClient.builder(new HttpHost(properties.getProperty("hostname"),443,"https"))
+                      .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                          @Override
+                          public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
+                              return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                          }
+                      }));
       return client;
   }
 
@@ -54,12 +60,19 @@ public class ElasticSearchConsumer {
       loadCredentials();
       Logger logger = LoggerFactory.getLogger(ElasticSearchConsumer.class.getName());
       RestHighLevelClient client = createClient();
-      String jsonString="{ \"name\" : \"Sakait Bhandari\" }";
-      IndexRequest indexRequest = new IndexRequest("twitter").source(jsonString, XContentType.JSON);
+      String jsonString="{" +
+              "\"user\":\"kimchy\"," +
+              "\"postDate\":\"2013-01-30\"," +
+              "\"message\":\"trying out Elasticsearch\"" +
+              "}";
+              // "{ \"name\" : \"Sakait Bhandari\" }";
+      IndexRequest indexRequest = new IndexRequest("user");
+      //indexRequest.id("1");
+      indexRequest.source(jsonString, XContentType.JSON);
 
       IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
       String id = indexResponse.getId();
-      logger.info("id:",id);
+      logger.info(id);
 
       client.close();
 
