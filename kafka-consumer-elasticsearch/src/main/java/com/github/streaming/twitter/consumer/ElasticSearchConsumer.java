@@ -1,5 +1,6 @@
 package com.github.streaming.twitter.consumer;
 
+import com.google.gson.JsonParser;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -71,6 +72,8 @@ public class ElasticSearchConsumer {
       properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
       properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
       properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
+      properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,"false");
+      properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,"10");
 
       KafkaConsumer<String,String> consumer = new KafkaConsumer<String, String>(properties);
       consumer.subscribe(Arrays.asList(topic));
@@ -85,12 +88,16 @@ public class ElasticSearchConsumer {
       KafkaConsumer<String,String>consumer = createConsumer("twitter_tweets");
       while(true){
           ConsumerRecords<String,String>records = consumer.poll(Duration.ofMillis(100));
+
+
           for(ConsumerRecord<String,String>record :records){
+              //TODO:Create a strategy to create an idempotent consumer
+              String id = extractIdFromTweet(record.value());
               IndexRequest request = new IndexRequest("twitter");
+              request.id(id);
               request.source(record.value(),XContentType.JSON);
               IndexResponse response = client.index(request,RequestOptions.DEFAULT);
-              String id = response.getId();
-              logger.info(id);
+              logger.info(response.getId());
               try {
                   Thread.sleep(1000);
               } catch (InterruptedException e) {
@@ -99,7 +106,10 @@ public class ElasticSearchConsumer {
           }
       }
       //client.close();
-
-
   }
+   private static JsonParser jsonParser = new JsonParser();
+    private static String extractIdFromTweet(String tweetJson) {
+        //gson library
+        return jsonParser.parse(tweetJson).getAsJsonObject().get("id_str").getAsString();
+    }
 }
